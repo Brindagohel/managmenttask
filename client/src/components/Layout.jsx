@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
+import { api } from '../api.js';
 import Icon, { Logo } from './Icon.jsx';
 import Avatar from './Avatar.jsx';
+import TopBar from './TopBar.jsx';
+import BottomDock from './BottomDock.jsx';
+import TaskForm from './TaskForm.jsx';
 
 // Small popup used the first time you switch to a role you haven't logged into yet
 function AddAccountModal({ role, onClose }) {
@@ -54,14 +58,40 @@ export default function Layout({ children }) {
   const { user, sessions, logout, switchRole } = useAuth();
   const [open, setOpen] = useState(false);
   const [modalRole, setModalRole] = useState(null);
+  // desktop sidebar can be collapsed to icons only (remembered in this browser)
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar') === 'collapsed');
+  // quick "add task" from the floating dock; bumping refreshKey reloads the current page's data
+  const [quick, setQuick] = useState(null); // null = closed, array = employees list
+  const [refreshKey, setRefreshKey] = useState(0);
+  const isAdmin = user.role === 'admin';
+  const c = collapsed;
+
+  const toggleSidebar = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem('sidebar', next ? 'collapsed' : 'expanded');
+  };
 
   const link = ({ isActive }) =>
-    `flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium transition ${isActive ? 'bg-petal text-berry-dark' : 'text-mute hover:bg-blush hover:text-ink'}`;
+    `flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium transition ${c ? 'md:justify-center md:px-0' : ''} ${isActive ? 'bg-petal text-berry-dark' : 'text-mute hover:bg-blush hover:text-ink'}`;
+  const label = c ? 'md:hidden' : '';
 
   const pick = async (role) => {
     if (role === user.role) return;
     if (sessions[role]) await switchRole(role);
     else setModalRole(role);
+  };
+
+  const openQuickAdd = async () => {
+    let list = [];
+    try { list = await api('/users/employees'); } catch { /* form shows a hint when empty */ }
+    setQuick(list);
+  };
+
+  const saveQuick = async (form) => {
+    await api('/tasks', { method: 'POST', body: form });
+    setQuick(null);
+    setRefreshKey((k) => k + 1);
   };
 
   return (
@@ -71,18 +101,22 @@ export default function Layout({ children }) {
         <button className="icon-btn" onClick={() => setOpen(!open)} aria-label="Toggle menu"><Icon name={open ? 'close' : 'menu'} size={22} /></button>
       </header>
 
-      <aside className={`${open ? 'flex' : 'hidden'} w-full flex-col border-r border-petal bg-white p-5 md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0`}>
-        <div className="mb-8 hidden items-center gap-3 md:flex">
+      <aside className={`${open ? 'flex' : 'hidden'} w-full flex-col border-r border-petal bg-white p-5 transition-[width] md:sticky md:top-0 md:flex md:h-screen md:shrink-0 ${c ? 'md:w-20 md:px-3' : 'md:w-64'}`}>
+        <div className={`mb-8 hidden items-center gap-3 md:flex ${c ? 'md:flex-col' : ''}`}>
           <Logo />
-          <span className="font-display text-2xl font-bold">TaskFlow</span>
+          <span className={`font-display text-2xl font-bold ${label}`}>TaskFlow</span>
+          <button className={`icon-btn ${c ? '' : 'ml-auto'}`} onClick={toggleSidebar} aria-label={c ? 'Expand sidebar' : 'Collapse sidebar'} title={c ? 'Expand sidebar' : 'Collapse sidebar'}>
+            <Icon name={c ? 'chevronRight' : 'chevronLeft'} size={18} />
+          </button>
         </div>
         <nav className="space-y-1" onClick={() => setOpen(false)}>
-          <NavLink to="/" end className={link}><Icon name="tasks" /> {user.role === 'admin' ? 'All tasks' : 'My tasks'}</NavLink>
-          {user.role === 'admin' && <NavLink to="/ai" className={link}><Icon name="sparkle" /> AI task generator</NavLink>}
+          <NavLink to="/" end className={link} title="Dashboard"><Icon name="dashboard" /> <span className={label}>Dashboard</span></NavLink>
+          <NavLink to="/tasks" className={link} title={isAdmin ? 'All tasks' : 'My tasks'}><Icon name="tasks" /> <span className={label}>{isAdmin ? 'All tasks' : 'My tasks'}</span></NavLink>
+          {isAdmin && <NavLink to="/ai" className={link} title="AI task generator"><Icon name="sparkle" /> <span className={label}>AI task generator</span></NavLink>}
         </nav>
 
         <div className="mt-8 space-y-3 md:mt-auto">
-          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-blush p-1 text-sm font-semibold" title="Log in once per role, then switch instantly">
+          <div className={`grid grid-cols-2 gap-1 rounded-2xl bg-blush p-1 text-sm font-semibold ${c ? 'md:hidden' : ''}`} title="Log in once per role, then switch instantly">
             {['admin', 'employee'].map((r) => (
               <button
                 key={r}
@@ -94,9 +128,9 @@ export default function Layout({ children }) {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl bg-blush p-3">
+          <div className={`flex items-center gap-3 rounded-2xl bg-blush p-3 ${c ? 'md:flex-col md:p-2' : ''}`}>
             <Avatar name={user.name} size="h-10 w-10" />
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${label}`}>
               <p className="truncate font-semibold leading-tight">{user.name}</p>
               <p className="text-sm capitalize text-mute">{user.role}</p>
             </div>
@@ -105,10 +139,16 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      {/* key = user id, so the page reloads fresh data when you switch role */}
-      <main key={user.id} className="min-w-0 flex-1 p-4 md:p-10">{children}</main>
+      <BottomDock isAdmin={isAdmin} onAdd={openQuickAdd} />
+
+      <div className="min-w-0 flex-1">
+        <TopBar refreshKey={refreshKey} />
+        {/* key = user id, so the page reloads fresh data when you switch role (or add a task from the dock) */}
+        <main key={`${user.id}-${refreshKey}`} className="p-4 pb-28 md:p-10 md:pb-28">{children}</main>
+      </div>
 
       {modalRole && <AddAccountModal role={modalRole} onClose={() => setModalRole(null)} />}
+      {quick && <div className="relative z-40"><TaskForm initial={null} employees={quick} onSave={saveQuick} onClose={() => setQuick(null)} /></div>}
     </div>
   );
 }

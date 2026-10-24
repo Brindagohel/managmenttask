@@ -4,6 +4,7 @@ import Layout from './components/Layout.jsx';
 import TasksView from './components/TasksView.jsx';
 import Login from './pages/Login.jsx';
 import AIGenerator from './pages/AIGenerator.jsx';
+import Dashboard from './pages/Dashboard.jsx';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -18,7 +19,8 @@ export default function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<TasksView isAdmin={isAdmin} />} />
+        <Route path="/" element={<Dashboard isAdmin={isAdmin} />} />
+        <Route path="/tasks" element={<TasksView isAdmin={isAdmin} />} />
         {isAdmin && <Route path="/ai" element={<AIGenerator />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

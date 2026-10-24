@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
 import { api } from '../api.js';
 import TaskForm from './TaskForm.jsx';
@@ -59,7 +60,10 @@ export default function TasksView({ isAdmin }) {
   const [employees, setEmployees] = useState([]);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, task = edit
   const [error, setError] = useState('');
-  const [q, setQ] = useState('');
+  // search text can come from the top bar / notifications / dashboard via /tasks?q=...
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get('q') || '');
+  useEffect(() => { setQ(params.get('q') || ''); }, [params]);
   const [priority, setPriority] = useState('All');
   const [assignee, setAssignee] = useState('All');
 
