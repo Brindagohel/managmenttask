@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import Attachment from '../models/Attachment.js';
 import Task from '../models/Task.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { notifyAssigned, notifyAssignedMany, notifyDeadlineChanged, notifyReviewRequested, notifyReviewResult } from '../utils/notify.js';
@@ -202,6 +203,7 @@ router.delete('/:id', adminOnly, async (req, res, next) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
+    await Attachment.deleteMany({ task: task._id });
     res.json({ message: 'Task deleted' });
   } catch (e) { next(e); }
 });

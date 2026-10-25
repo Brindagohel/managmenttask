@@ -1,6 +1,3 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import fileRoutes, { uploadDir } from './routes/files.js';
 import 'dotenv/config';
 import dns from 'node:dns';
 import express from 'express';
@@ -14,6 +11,7 @@ import userRoutes from './routes/users.js';
 import aiRoutes from './routes/ai.js';
 import attendance from './routes/attendance.js';
 import mailRoutes from './routes/mail.js';
+import attachmentRoutes from './routes/attachments.js';
 import { runReminders } from './utils/reminders.js';
 
 // Local-only network fix (not needed on Vercel)
@@ -24,7 +22,7 @@ if (!process.env.VERCEL) {
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 async function seedAdmin() {
   const email = (process.env.ADMIN_EMAIL || 'boss@example.com').toLowerCase();
@@ -62,8 +60,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/attendance', attendance);
 app.use('/api/mail', mailRoutes);
-app.use('/api/files', fileRoutes);
-app.use('/uploads', express.static(uploadDir));
+app.use('/api/attachments', attachmentRoutes);
 
 // Daily reminder emails. Vercel Cron calls this (see vercel.json) and sends  Authorization: Bearer <CRON_SECRET>
 app.get('/api/cron/reminders', async (req, res, next) => {

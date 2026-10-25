@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
+import { useTheme } from '../theme.js';
 import { api } from '../api.js';
 import Icon, { Logo } from './Icon.jsx';
 import Avatar from './Avatar.jsx';
@@ -32,20 +33,20 @@ function AddAccountModal({ role, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm" onClick={onClose}>
-      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm space-y-4 rounded-3xl bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm space-y-4 rounded-3xl bg-card p-6 shadow-2xl ring-1 ring-petal">
         <h2 className="text-2xl font-bold">{signup ? 'Create employee account' : `Log in as ${role === 'admin' ? 'admin' : 'employee'}`}</h2>
         <p className="text-sm text-mute">You only do this once. After that, one click switches views.</p>
         {signup && <input className="input" placeholder="Full name" value={form.name} onChange={set('name')} required />}
         <input className="input" type="email" placeholder="Email" value={form.email} onChange={set('email')} required />
         <input className="input" type="password" placeholder="Password" value={form.password} onChange={set('password')} required />
-        {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+        {error && <p className="rounded-xl bg-red-500/15 p-3 text-sm text-red-400">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn btn-soft" onClick={onClose}>Cancel</button>
           <button className="btn" disabled={busy}>{busy ? 'Please wait…' : signup ? 'Sign up' : 'Log in'}</button>
         </div>
         {role === 'employee' && (
-          <button type="button" className="w-full text-sm font-medium text-berry-dark hover:underline" onClick={() => setSignup(!signup)}>
+          <button type="button" className="w-full text-sm font-medium text-berry hover:underline" onClick={() => setSignup(!signup)}>
             {signup ? 'Already have an account? Log in' : 'No employee account yet? Sign up'}
           </button>
         )}
@@ -56,6 +57,8 @@ function AddAccountModal({ role, onClose }) {
 
 export default function Layout({ children }) {
   const { user, sessions, logout, switchRole } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
   const [open, setOpen] = useState(false);
   const [modalRole, setModalRole] = useState(null);
   // desktop sidebar can be collapsed to icons only (remembered in this browser)
@@ -73,7 +76,7 @@ export default function Layout({ children }) {
   };
 
   const link = ({ isActive }) =>
-    `flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium transition ${c ? 'md:justify-center md:px-0' : ''} ${isActive ? 'bg-petal text-berry-dark' : 'text-mute hover:bg-blush hover:text-ink'}`;
+    `flex items-center gap-3 rounded-xl px-4 py-2.5 font-medium transition ${c ? 'md:justify-center md:px-0' : ''} ${isActive ? 'bg-petal text-ink' : 'text-mute hover:bg-petal/60 hover:text-ink'}`;
   const label = c ? 'md:hidden' : '';
 
   const pick = async (role) => {
@@ -94,17 +97,31 @@ export default function Layout({ children }) {
     setRefreshKey((k) => k + 1);
   };
 
+  const themeBtn = (
+    <button
+      className="icon-btn"
+      onClick={toggleTheme}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      <Icon name={isDark ? 'sun' : 'moon'} />
+    </button>
+  );
+
   return (
     <div className="min-h-screen md:flex">
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-petal bg-white/90 p-3 backdrop-blur md:hidden">
-        <span className="flex items-center gap-2 font-display text-xl font-bold text-ink"><Logo size={32} /> TaskFlow</span>
-        <button className="icon-btn" onClick={() => setOpen(!open)} aria-label="Toggle menu"><Icon name={open ? 'close' : 'menu'} size={22} /></button>
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-petal bg-card/90 p-3 backdrop-blur md:hidden">
+        <span className="flex items-center gap-2 text-xl font-bold text-ink"><Logo size={32} /> TaskFlow</span>
+        <div className="flex items-center gap-1">
+          {themeBtn}
+          <button className="icon-btn" onClick={() => setOpen(!open)} aria-label="Toggle menu"><Icon name={open ? 'close' : 'menu'} size={22} /></button>
+        </div>
       </header>
 
-      <aside className={`${open ? 'flex' : 'hidden'} w-full flex-col border-r border-petal bg-white p-5 transition-[width] md:sticky md:top-0 md:flex md:h-screen md:shrink-0 ${c ? 'md:w-20 md:px-3' : 'md:w-64'}`}>
+      <aside className={`${open ? 'flex' : 'hidden'} w-full flex-col border-r border-petal bg-card p-5 transition-[width] md:sticky md:top-0 md:flex md:h-screen md:shrink-0 ${c ? 'md:w-20 md:px-3' : 'md:w-64'}`}>
         <div className={`mb-8 hidden items-center gap-3 md:flex ${c ? 'md:flex-col' : ''}`}>
           <Logo />
-          <span className={`font-display text-2xl font-bold ${label}`}>TaskFlow</span>
+          <span className={`text-2xl font-bold ${label}`}>TaskFlow</span>
           <button className={`icon-btn ${c ? '' : 'ml-auto'}`} onClick={toggleSidebar} aria-label={c ? 'Expand sidebar' : 'Collapse sidebar'} title={c ? 'Expand sidebar' : 'Collapse sidebar'}>
             <Icon name={c ? 'chevronRight' : 'chevronLeft'} size={18} />
           </button>
@@ -116,7 +133,7 @@ export default function Layout({ children }) {
           <NavLink to="/attendance" className={link} title={isAdmin ? 'Attendance' : 'My hours'}><Icon name="clock" /> <span className={label}>{isAdmin ? 'Attendance' : 'My hours'}</span></NavLink>
           {isAdmin && <NavLink to="/reports" className={link} title="Reports"><Icon name="chart" /> <span className={label}>Reports</span></NavLink>}
           {isAdmin && <NavLink to="/email" className={link} title="Email & alerts"><Icon name="mail" /> <span className={label}>Email &amp; alerts</span></NavLink>}
-         {isAdmin && <NavLink to="/files" className={link} title="Files"><Icon name="folder" /> <span className={label}>Files</span></NavLink>}
+          <NavLink to="/files" className={link} title="Files"><Icon name="folder" /> <span className={label}>Files</span></NavLink>
           {isAdmin && <NavLink to="/ai" className={link} title="AI task generator"><Icon name="sparkle" /> <span className={label}>AI task generator</span></NavLink>}
         </nav>
 
@@ -126,19 +143,20 @@ export default function Layout({ children }) {
               <button
                 key={r}
                 onClick={() => pick(r)}
-                className={`rounded-xl px-3 py-2 transition ${user.role === r ? 'bg-white text-berry-dark shadow-sm' : 'text-mute hover:text-ink'}`}
+                className={`rounded-xl px-3 py-2 transition ${user.role === r ? 'bg-petal text-ink shadow-sm' : 'text-mute hover:text-ink'}`}
               >
                 {r === 'admin' ? 'Admin' : 'Employee'}{!sessions[r] && ' +'}
               </button>
             ))}
           </div>
 
-          <div className={`flex items-center gap-3 rounded-2xl bg-blush p-3 ${c ? 'md:flex-col md:p-2' : ''}`}>
+          <div className={`flex items-center gap-2 rounded-2xl bg-blush p-3 ${c ? 'md:flex-col md:p-2' : ''}`}>
             <Avatar name={user.name} size="h-10 w-10" />
             <div className={`min-w-0 flex-1 ${label}`}>
               <p className="truncate font-semibold leading-tight">{user.name}</p>
               <p className="text-sm capitalize text-mute">{user.role}</p>
             </div>
+            {themeBtn}
             <button className="icon-btn" onClick={logout} aria-label="Log out" title="Log out"><Icon name="logout" /></button>
           </div>
         </div>

@@ -1,32 +1,79 @@
 @import "tailwindcss";
 
-@theme {
+@theme static {
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  --font-display: "Figtree", ui-sans-serif, system-ui, sans-serif;
+
+  /* DARK (default) */
+  --color-blush: #0d0d10;
+  --color-card: #16161b;
+  --color-petal: #26262e;
+  --color-rose: #3a3a46;
+  --color-berry: #d8c4f5;
+  --color-berry-dark: #e9ddfb;
+  --color-ink: #f3f3f6;
+  --color-mute: #8d8d9a;
+  --color-onberry: #1a1326;
+
+  /* Accents (same in both themes) */
+  --color-aqua: #7fe3f5;
+  --color-lemon: #f4f7c4;
+}
+
+html {
+  color-scheme: dark;
+  --input-bg: #0d0d10;
+  --red-soft: rgb(239 68 68 / .14);
+  --btn-hover: #c7acef;
+  --btn-glow: rgb(216 196 245 / .55);
+  --focus-ring: rgb(216 196 245 / .22);
+  --overlay: rgb(0 0 0 / .6);
+}
+
+/* LIGHT */
+html[data-theme="light"] {
+  color-scheme: light;
   --color-blush: #fff7fa;
+  --color-card: #ffffff;
   --color-petal: #ffe4ee;
   --color-rose: #f7b6cd;
   --color-berry: #d6578a;
   --color-berry-dark: #b8416f;
   --color-ink: #3b2230;
   --color-mute: #8f7683;
+  --color-onberry: #ffffff;
+
+  --input-bg: #ffffff;
+  --red-soft: #fef2f2;
+  --btn-hover: #b8416f;
+  --btn-glow: #d6578a;
+  --focus-ring: #f7b6cd66;
+  --overlay: rgb(59 34 48 / .4);
 }
 
-body { background: var(--color-blush); color: var(--color-ink); font-family: var(--font-sans); }
-h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
+body {
+  background: var(--color-blush);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  transition: background-color .2s, color .2s;
+}
+h1, h2 { font-family: var(--font-display); letter-spacing: -0.02em; }
 
 .input {
   width: 100%; border-radius: 0.8rem; border: 1px solid var(--color-petal);
-  background: #fff; padding: 0.6rem 0.85rem; outline: none; transition: box-shadow .15s, border-color .15s;
+  background: var(--input-bg); color: var(--color-ink);
+  padding: 0.6rem 0.85rem; outline: none; transition: box-shadow .15s, border-color .15s;
 }
-.input:focus { border-color: var(--color-berry); box-shadow: 0 0 0 3px #f7b6cd66; }
+.input::placeholder { color: var(--color-mute); }
+.input:focus { border-color: var(--color-berry); box-shadow: 0 0 0 3px var(--focus-ring); }
+
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
   border-radius: 0.8rem; padding: 0.6rem 1.1rem; font-weight: 600; cursor: pointer;
-  background: var(--color-berry); color: #fff; transition: background .15s, transform .1s;
-  box-shadow: 0 6px 16px -8px var(--color-berry);
+  background: var(--color-berry); color: var(--color-onberry); transition: background .15s, transform .1s;
+  box-shadow: 0 6px 18px -8px var(--btn-glow);
 }
-.btn:hover { background: var(--color-berry-dark); }
+.btn:hover { background: var(--btn-hover); }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 .btn-soft { background: var(--color-petal); color: var(--color-berry-dark); box-shadow: none; }
@@ -34,5 +81,13 @@ h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
 .icon-btn {
   display: inline-flex; padding: .45rem; border-radius: .6rem; color: var(--color-mute); cursor: pointer;
 }
-.icon-btn:hover { background: var(--color-petal); color: var(--color-berry-dark); }
+.icon-btn:hover { background: var(--color-petal); color: var(--color-ink); }
 :focus-visible { outline: 2px solid var(--color-berry); outline-offset: 2px; }
+
+/* Overrides so pages that still use fixed light classes follow the theme */
+.bg-white { background-color: var(--color-card); }
+.bg-red-50 { background-color: var(--red-soft); }
+.bg-berry.text-white { color: var(--color-onberry); }
+[class*="bg-ink/"] { background-color: var(--overlay); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-rose) transparent; }

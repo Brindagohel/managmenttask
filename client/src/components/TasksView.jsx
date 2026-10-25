@@ -16,16 +16,22 @@ function Ring({ percent }) {
   const r = 34, c = 2 * Math.PI * r;
   return (
     <svg width="88" height="88" viewBox="0 0 88 88" role="img" aria-label={`${percent}% completed`}>
-      <circle cx="44" cy="44" r={r} fill="none" stroke="#ffe4ee" strokeWidth="9" />
-      <circle cx="44" cy="44" r={r} fill="none" stroke="#d6578a" strokeWidth="9" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - percent / 100)} transform="rotate(-90 44 44)" />
-      <text x="44" y="49" textAnchor="middle" fontSize="17" fontWeight="700" fill="#3b2230">{percent}%</text>
+      <circle cx="44" cy="44" r={r} fill="none" className="stroke-petal" strokeWidth="9" />
+      <circle cx="44" cy="44" r={r} fill="none" className="stroke-berry" strokeWidth="9" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - percent / 100)} transform="rotate(-90 44 44)" />
+      <text x="44" y="49" textAnchor="middle" fontSize="17" fontWeight="700" className="fill-ink">{percent}%</text>
     </svg>
   );
 }
 
-function TaskCard({ t, isAdmin, onOpen, onEdit, onDelete, onStatus }) {
+function TaskCard({ t, isAdmin, dragging, onOpen, onEdit, onDelete, onStatus, onDragStart, onDragEnd }) {
+  const locked = !isAdmin && t.status === 'Completed';
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-petal bg-white p-4 pl-5 shadow-sm">
+    <article
+      draggable={!locked}
+      onDragStart={(e) => onDragStart(e, t)}
+      onDragEnd={onDragEnd}
+      className={`relative overflow-hidden rounded-2xl border border-petal bg-card p-4 pl-5 shadow-sm transition ${locked ? '' : 'cursor-grab active:cursor-grabbing'} ${dragging ? 'opacity-40' : ''}`}
+    >
       <span className={`absolute inset-y-0 left-0 w-1.5 ${STRIPE[t.priority]}`} />
       <div className="flex items-start justify-between gap-2">
         <h3 className={`font-semibold leading-snug ${t.status === 'Completed' ? 'text-mute line-through' : ''}`}>
@@ -49,7 +55,7 @@ function TaskCard({ t, isAdmin, onOpen, onEdit, onDelete, onStatus }) {
       </div>
       <div className="mt-4 flex items-center gap-2">
         {isAdmin && <Avatar name={t.assignedTo?.name || '?'} />}
-        <select className="input !py-1.5 !text-sm" value={t.status} disabled={!isAdmin && t.status === 'Completed'} onChange={(e) => onStatus(t._id, e.target.value)} aria-label="Task status">
+        <select className="input !py-1.5 !text-sm" value={t.status} disabled={locked} onChange={(e) => onStatus(t._id, e.target.value)} aria-label="Task status">
           {statusOptions(isAdmin, t.status).map((s) => <option key={s}>{s}</option>)}
         </select>
       </div>
@@ -64,6 +70,8 @@ export default function TasksView({ isAdmin }) {
   const [editing, setEditing] = useState(null); // null = closed, {} = new, task = edit
   const [openId, setOpenId] = useState(null); // task shown in the side drawer
   const [error, setError] = useState('');
+  const [dragId, setDragId] = useState(null); // task being dragged
+  const [overCol, setOverCol] = useState(null); // column under the pointer
   // search text can come from the top bar / notifications / dashboard via /tasks?q=...
   const [params] = useSearchParams();
   const [q, setQ] = useState(params.get('q') || '');
@@ -96,8 +104,25 @@ export default function TasksView({ isAdmin }) {
   };
 
   const changeStatus = async (id, status) => {
+    setError('');
     try { replace(await api(`/tasks/${id}/status`, { method: 'PATCH', body: { status } })); }
     catch (e) { setError(e.message); }
+  };
+
+  // ---- drag and drop between columns ----
+  const onDragStart = (e, t) => {
+    e.dataTransfer.setData('text/plain', t._id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDragId(t._id);
+  };
+  const onDragEnd = () => { setDragId(null); setOverCol(null); };
+  const onDropTo = (status) => (e) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain') || dragId;
+    setDragId(null);
+    setOverCol(null);
+    const task = tasks.find((t) => t._id === id);
+    if (task && task.status !== status) changeStatus(id, status); // server enforces who can move what
   };
 
   const drawerTask = tasks.find((t) => t._id === openId);
@@ -130,14 +155,14 @@ export default function TasksView({ isAdmin }) {
       {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</p>}
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-petal sm:col-span-2 lg:col-span-1">
+        <div className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-petal sm:col-span-2 lg:col-span-1">
           <Ring percent={percent} />
-          <div><p className="font-display text-lg font-bold">Completed</p><p className="text-sm text-mute">{done} of {tasks.length} tasks</p></div>
+          <div><p className="text-lg font-bold">Completed</p><p className="text-sm text-mute">{done} of {tasks.length} tasks</p></div>
         </div>
         {stats.map(([label, n, color]) => (
-          <div key={label} className="flex flex-col justify-center rounded-2xl bg-white p-5 shadow-sm ring-1 ring-petal">
+          <div key={label} className="flex flex-col justify-center rounded-2xl bg-card p-5 shadow-sm ring-1 ring-petal">
             <p className="text-sm text-mute">{label}</p>
-            <p className={`font-display text-4xl font-bold ${color}`}>{n}</p>
+            <p className={`text-4xl font-bold ${color}`}>{n}</p>
           </div>
         ))}
       </div>
@@ -159,23 +184,45 @@ export default function TasksView({ isAdmin }) {
       </div>
 
       {!tasks.length && (
-        <p className="mb-6 rounded-2xl border border-dashed border-rose bg-white p-8 text-center text-mute">
+        <p className="mb-6 rounded-2xl border border-dashed border-rose bg-card p-8 text-center text-mute">
           {isAdmin ? 'No tasks yet. Click New task to assign the first one.' : 'Nothing assigned to you yet. Check back soon.'}
         </p>
       )}
 
+      <p className="mb-3 hidden text-sm text-mute md:block">Tip: drag a card into another column to change its status.</p>
+
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {STATUSES.map((s) => {
           const col = visible.filter((t) => t.status === s);
+          const isOver = overCol === s && dragId;
           return (
-            <section key={s} className="rounded-3xl bg-petal/50 p-3">
+            <section
+              key={s}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (overCol !== s) setOverCol(s); }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOverCol(null); }}
+              onDrop={onDropTo(s)}
+              className={`rounded-3xl p-3 transition ${isOver ? 'bg-petal ring-2 ring-berry' : 'bg-petal/50'}`}
+            >
               <h3 className="mb-3 flex items-center gap-2 px-2 pt-1 font-semibold">
                 <span className={`h-2.5 w-2.5 rounded-full ${DOT[s]}`} /> {s}
-                <span className="ml-auto rounded-full bg-white px-2 text-sm text-mute">{col.length}</span>
+                <span className="ml-auto rounded-full bg-card px-2 text-sm text-mute">{col.length}</span>
               </h3>
-              <div className="space-y-3">
-                {col.map((t) => <TaskCard key={t._id} t={t} isAdmin={isAdmin} onOpen={(x) => setOpenId(x._id)} onEdit={setEditing} onDelete={remove} onStatus={changeStatus} />)}
-                {!col.length && <p className="px-2 pb-3 text-sm text-mute">Nothing here.</p>}
+              <div className="min-h-24 space-y-3">
+                {col.map((t) => (
+                  <TaskCard
+                    key={t._id}
+                    t={t}
+                    isAdmin={isAdmin}
+                    dragging={dragId === t._id}
+                    onOpen={(x) => setOpenId(x._id)}
+                    onEdit={setEditing}
+                    onDelete={remove}
+                    onStatus={changeStatus}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                  />
+                ))}
+                {!col.length && <p className="px-2 pb-3 text-sm text-mute">{isOver ? 'Drop here' : 'Nothing here.'}</p>}
               </div>
             </section>
           );
