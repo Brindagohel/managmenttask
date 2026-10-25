@@ -5,9 +5,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const uploadDir = path.join(__dirname, '..', 'uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
-
+export const uploadDir = process.env.VERCEL
+  ? '/tmp/uploads'
+  : path.join(__dirname, '..', 'uploads');
+try {
+  fs.mkdirSync(uploadDir, { recursive: true });
+} catch (e) {
+  console.error('Upload dir error:', e.message);
+}
 const upload = multer({
   storage: multer.diskStorage({
     destination: uploadDir,
@@ -24,7 +29,7 @@ const upload = multer({
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  const files = fs.readdirSync(uploadDir).map((name) => {
+const files = (fs.existsSync(uploadDir) ? fs.readdirSync(uploadDir) : []).map((name) => {
     const stat = fs.statSync(path.join(uploadDir, name));
     return { name, size: stat.size, uploadedAt: stat.mtime, url: `/uploads/${name}` };
   });
