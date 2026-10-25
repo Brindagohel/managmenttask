@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext.jsx';
 import { api } from '../api.js';
+import { STATUSES, statusOptions } from '../utils.js';
 import TaskForm from './TaskForm.jsx';
+import TaskDrawer from './TaskDrawer.jsx';
 import Avatar from './Avatar.jsx';
 import Icon from './Icon.jsx';
 
-export const STATUSES = ['Pending', 'In Progress', 'Completed'];
-const DOT = { Pending: 'bg-berry', 'In Progress': 'bg-amber-400', Completed: 'bg-emerald-400' };
+const DOT = { Pending: 'bg-berry', 'In Progress': 'bg-amber-400', 'In Review': 'bg-violet-400', Completed: 'bg-emerald-400' };
 const STRIPE = { High: 'bg-berry', Medium: 'bg-amber-300', Low: 'bg-emerald-300' };
 const isOverdue = (t) => t.status !== 'Completed' && new Date(t.deadline) < new Date(new Date().toDateString());
 
@@ -22,12 +23,14 @@ function Ring({ percent }) {
   );
 }
 
-function TaskCard({ t, isAdmin, onEdit, onDelete, onStatus }) {
+function TaskCard({ t, isAdmin, onOpen, onEdit, onDelete, onStatus }) {
   return (
     <article className="relative overflow-hidden rounded-2xl border border-petal bg-white p-4 pl-5 shadow-sm">
       <span className={`absolute inset-y-0 left-0 w-1.5 ${STRIPE[t.priority]}`} />
       <div className="flex items-start justify-between gap-2">
-        <h3 className={`font-semibold leading-snug ${t.status === 'Completed' ? 'text-mute line-through' : ''}`}>{t.title}</h3>
+        <h3 className={`font-semibold leading-snug ${t.status === 'Completed' ? 'text-mute line-through' : ''}`}>
+          <button type="button" className="text-left hover:text-berry-dark hover:underline" onClick={() => onOpen(t)}>{t.title}</button>
+        </h3>
         {isAdmin && (
           <div className="-mr-1 -mt-1 flex shrink-0">
             <button className="icon-btn" onClick={() => onEdit(t)} aria-label="Edit task"><Icon name="edit" size={16} /></button>
@@ -46,8 +49,8 @@ function TaskCard({ t, isAdmin, onEdit, onDelete, onStatus }) {
       </div>
       <div className="mt-4 flex items-center gap-2">
         {isAdmin && <Avatar name={t.assignedTo?.name || '?'} />}
-        <select className="input !py-1.5 !text-sm" value={t.status} onChange={(e) => onStatus(t._id, e.target.value)} aria-label="Task status">
-          {STATUSES.map((s) => <option key={s}>{s}</option>)}
+        <select className="input !py-1.5 !text-sm" value={t.status} disabled={!isAdmin && t.status === 'Completed'} onChange={(e) => onStatus(t._id, e.target.value)} aria-label="Task status">
+          {statusOptions(isAdmin, t.status).map((s) => <option key={s}>{s}</option>)}
         </select>
       </div>
     </article>
@@ -59,6 +62,7 @@ export default function TasksView({ isAdmin }) {
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, task = edit
+  const [openId, setOpenId] = useState(null); // task shown in the side drawer
   const [error, setError] = useState('');
   // search text can come from the top bar / notifications / dashboard via /tasks?q=...
   const [params] = useSearchParams();
@@ -95,6 +99,8 @@ export default function TasksView({ isAdmin }) {
     try { replace(await api(`/tasks/${id}/status`, { method: 'PATCH', body: { status } })); }
     catch (e) { setError(e.message); }
   };
+
+  const drawerTask = tasks.find((t) => t._id === openId);
 
   const visible = useMemo(() => tasks.filter((t) =>
     t.title.toLowerCase().includes(q.toLowerCase()) &&
@@ -158,7 +164,7 @@ export default function TasksView({ isAdmin }) {
         </p>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {STATUSES.map((s) => {
           const col = visible.filter((t) => t.status === s);
           return (
@@ -168,7 +174,7 @@ export default function TasksView({ isAdmin }) {
                 <span className="ml-auto rounded-full bg-white px-2 text-sm text-mute">{col.length}</span>
               </h3>
               <div className="space-y-3">
-                {col.map((t) => <TaskCard key={t._id} t={t} isAdmin={isAdmin} onEdit={setEditing} onDelete={remove} onStatus={changeStatus} />)}
+                {col.map((t) => <TaskCard key={t._id} t={t} isAdmin={isAdmin} onOpen={(x) => setOpenId(x._id)} onEdit={setEditing} onDelete={remove} onStatus={changeStatus} />)}
                 {!col.length && <p className="px-2 pb-3 text-sm text-mute">Nothing here.</p>}
               </div>
             </section>
@@ -176,6 +182,7 @@ export default function TasksView({ isAdmin }) {
         })}
       </div>
 
+      {drawerTask && <TaskDrawer task={drawerTask} isAdmin={isAdmin} onClose={() => setOpenId(null)} onChange={replace} onStatus={changeStatus} />}
       {editing && <TaskForm initial={editing._id ? editing : null} employees={employees} onSave={save} onClose={() => setEditing(null)} />}
     </>
   );

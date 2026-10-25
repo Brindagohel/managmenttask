@@ -1,3 +1,6 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fileRoutes, { uploadDir } from './routes/files.js';
 import 'dotenv/config';
 import dns from 'node:dns';
 import express from 'express';
@@ -9,6 +12,9 @@ import authRoutes from './routes/auth.js';
 import taskRoutes from './routes/tasks.js';
 import userRoutes from './routes/users.js';
 import aiRoutes from './routes/ai.js';
+import attendance from './routes/attendance.js';
+import mailRoutes from './routes/mail.js';
+import { runReminders } from './utils/reminders.js';
 
 // Local-only network fix (not needed on Vercel)
 if (!process.env.VERCEL) {
@@ -54,6 +60,19 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/attendance', attendance);
+app.use('/api/mail', mailRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/uploads', express.static(uploadDir));
+
+// Daily reminder emails. Vercel Cron calls this (see vercel.json) and sends  Authorization: Bearer <CRON_SECRET>
+app.get('/api/cron/reminders', async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers.authorization !== `Bearer ${secret}`) return res.status(401).json({ message: 'Unauthorized' });
+    res.json(await runReminders());
+  } catch (e) { next(e); }
+});
 app.get('/api/health', (req, res) => res.json({ ok: true, ai: !!process.env.GEMINI_API_KEY }));
 
 app.use((err, req, res, next) => {
@@ -65,7 +84,14 @@ app.use((err, req, res, next) => {
 if (!process.env.VERCEL) {
   const port = process.env.PORT || 5000;
   connectDb()
-    .then(() => app.listen(port, () => console.log('API running on port', port)))
+    .then(() => {
+      app.listen(port, () => console.log('API running on port', port));
+      // Optional local reminders: set REMINDERS_AUTO=true in .env (each task gets at most one reminder per day)
+      if (process.env.REMINDERS_AUTO === 'true') {
+        setTimeout(() => runReminders().catch(console.error), 30_000);
+        setInterval(() => runReminders().catch(console.error), 6 * 3600 * 1000);
+      }
+    })
     .catch((e) => { console.error('Startup failed:', e.message); process.exit(1); });
 }
 

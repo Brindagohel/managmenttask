@@ -8,6 +8,7 @@ export default function TaskForm({ initial, employees, onSave, onClose }) {
     priority: initial?.priority || 'Medium',
     deadline: initial?.deadline ? initial.deadline.slice(0, 10) : '',
     assignedTo: initial?.assignedTo?._id || '',
+    repeat: initial?.repeat || 'none',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -34,13 +35,25 @@ export default function TaskForm({ initial, employees, onSave, onClose }) {
           </label>
           <label className="block">Deadline<input type="date" className="input mt-1" value={form.deadline} onChange={set('deadline')} required /></label>
         </div>
-        <label className="block">Assign to
-          <select className="input mt-1" value={form.assignedTo} onChange={set('assignedTo')} required>
-            <option value="">Choose an employee</option>
-            {employees.map((u) => <option key={u._id} value={u._id}>{u.name} ({u.email})</option>)}
-          </select>
-        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">Assign to
+            <select className="input mt-1" value={form.assignedTo} onChange={set('assignedTo')} required>
+              <option value="">Choose an employee</option>
+              {employees.map((u) => <option key={u._id} value={u._id}>{u.name} ({u.email})</option>)}
+            </select>
+          </label>
+          <label className="block">Repeat
+            <select className="input mt-1" value={form.repeat} onChange={set('repeat')}>
+              <option value="none">Does not repeat</option>
+              <option value="daily">Every day</option>
+              <option value="weekly">Every week</option>
+              <option value="monthly">Every month</option>
+            </select>
+          </label>
+        </div>
+        {form.repeat !== 'none' && <p className="rounded-xl bg-blush p-3 text-sm text-mute">When this task is approved, the next one is created automatically with a new deadline.</p>}
         {!employees.length && <p className="text-sm text-mute">No employees yet. Ask your team to sign up on the login page first.</p>}
+        <p className="text-sm text-mute">The employee gets an email when you save.</p>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn btn-soft" onClick={onClose}>Cancel</button>

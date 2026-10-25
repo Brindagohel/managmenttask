@@ -112,6 +112,11 @@ export default function Layout({ children }) {
         <nav className="space-y-1" onClick={() => setOpen(false)}>
           <NavLink to="/" end className={link} title="Dashboard"><Icon name="dashboard" /> <span className={label}>Dashboard</span></NavLink>
           <NavLink to="/tasks" className={link} title={isAdmin ? 'All tasks' : 'My tasks'}><Icon name="tasks" /> <span className={label}>{isAdmin ? 'All tasks' : 'My tasks'}</span></NavLink>
+          <NavLink to="/planner" className={link} title="Planner"><Icon name="calendar" /> <span className={label}>Planner</span></NavLink>
+          <NavLink to="/attendance" className={link} title={isAdmin ? 'Attendance' : 'My hours'}><Icon name="clock" /> <span className={label}>{isAdmin ? 'Attendance' : 'My hours'}</span></NavLink>
+          {isAdmin && <NavLink to="/reports" className={link} title="Reports"><Icon name="chart" /> <span className={label}>Reports</span></NavLink>}
+          {isAdmin && <NavLink to="/email" className={link} title="Email & alerts"><Icon name="mail" /> <span className={label}>Email &amp; alerts</span></NavLink>}
+         {isAdmin && <NavLink to="/files" className={link} title="Files"><Icon name="folder" /> <span className={label}>Files</span></NavLink>}
           {isAdmin && <NavLink to="/ai" className={link} title="AI task generator"><Icon name="sparkle" /> <span className={label}>AI task generator</span></NavLink>}
         </nav>
 
